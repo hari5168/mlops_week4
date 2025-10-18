@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install google-cloud-storage
+          pip install google-cloud-storage cml
 
       - name: Authenticate with Google Cloud
         env:
