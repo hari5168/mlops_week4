@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install dvc[gs] pytest cml joblib scikit-learn pandas google-cloud-storage
+          pip install google-cloud-storage
 
       - name: Authenticate with Google Cloud
         env:
