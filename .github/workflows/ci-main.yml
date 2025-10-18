@@ -22,20 +22,21 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install google-cloud-storage
+          pip install dvc[gs] pytest cml joblib scikit-learn pandas google-cloud-storage
 
-      # ✅ Authenticate manually with GCP using service account JSON
       - name: Authenticate with Google Cloud
         env:
           GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
         run: |
           echo "$GCP_SERVICE_ACCOUNT_KEY" > key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/key.json
           gcloud auth activate-service-account --key-file=key.json
           gcloud config set project secure-portal-472706-j8
           gcloud auth list
 
-      # ✅ Pull dataset and model from DVC (on GCS)
       - name: Pull data & model from DVC
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/key.json
         run: |
           dvc pull
 
@@ -43,7 +44,6 @@ jobs:
         run: |
           pytest --maxfail=1 --disable-warnings -q | tee results.txt
 
-      # ✅ Post results as CML comment on PR or commit
       - name: Post CML report
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -52,3 +52,4 @@ jobs:
           echo "" >> report.md
           cat results.txt >> report.md
           npx cml comment create report.md
+
