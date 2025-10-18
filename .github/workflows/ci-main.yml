@@ -1,0 +1,54 @@
+name: CI - Main Branch
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install google-cloud-storage
+
+      # ✅ Authenticate manually with GCP using service account JSON
+      - name: Authenticate with Google Cloud
+        env:
+          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+        run: |
+          echo "$GCP_SERVICE_ACCOUNT_KEY" > key.json
+          gcloud auth activate-service-account --key-file=key.json
+          gcloud config set project secure-portal-472706-j8
+          gcloud auth list
+
+      # ✅ Pull dataset and model from DVC (on GCS)
+      - name: Pull data & model from DVC
+        run: |
+          dvc pull
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -q | tee results.txt
+
+      # ✅ Post results as CML comment on PR or commit
+      - name: Post CML report
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## ✅ CI Results - Main Branch" > report.md
+          echo "" >> report.md
+          cat results.txt >> report.md
+          npx cml comment create report.md

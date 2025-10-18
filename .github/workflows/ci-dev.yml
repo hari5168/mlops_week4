@@ -1,0 +1,44 @@
+name: CI - Dev Branch
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Install Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: secure-portal-472706-j8
+          service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+      - name: Pull data & model from DVC
+        run: dvc pull
+
+      - name: Run tests
+        run: |
+          pytest --maxfail=1 --disable-warnings -q | tee results.txt
+
+      - name: Post report as CML comment
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## CI Results - Dev Branch" > report.md
+          cat results.txt >> report.md
+          npx cml comment create report.md
