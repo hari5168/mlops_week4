@@ -2,6 +2,7 @@ import joblib
 import pandas as pd
 from sklearn.metrics import accuracy_score
 
+
 def test_model_accuracy():
     model = joblib.load("models/model.joblib")
     df = pd.read_csv("data/data.csv")
