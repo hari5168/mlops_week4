@@ -1,29 +1,31 @@
 name: CI - Main Branch
-
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
-
 jobs:
   test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-
+      
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install google-cloud-storage
-
+      
       - name: Authenticate with Google Cloud
         env:
           GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
@@ -33,31 +35,23 @@ jobs:
           gcloud auth activate-service-account --key-file=key.json
           gcloud config set project secure-portal-472706-j8
           gcloud auth list
-
+      
       - name: Pull data & model from DVC
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/key.json
         run: |
           dvc pull
-
+      
       - name: Run tests
         run: |
           pytest --maxfail=1 --disable-warnings -q | tee results.txt
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install CML
-        run: npm install -g @dvcorg/cml
-
+      
       - name: Post CML report
+        if: always()
         env:
           REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "## ✅ CI Results - Main Branch" > report.md
           echo "" >> report.md
           cat results.txt >> report.md
-          npx cml comment create report.md
-
+          npx --yes cml comment create report.md
